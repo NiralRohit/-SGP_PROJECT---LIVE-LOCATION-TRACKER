@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Debug Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            color: #4CAF50;
+        }
+        
+        .debug-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .debug-output {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background-color: #388E3C;
+        }
+        
+        input {
+            padding: 8px;
+            margin-right: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Debug Tool</h1>
+    <p>Use this tool to diagnose API connection issues with the Live Location Tracker.</p>
+    
+    <div class="debug-section">
+        <h2>Server Information</h2>
+        <div>
+            <p><strong>Page URL:</strong> <span id="page-url"></span></p>
+            <p><strong>API Base URL:</strong> <span id="api-base-url"></span></p>
+            <p><strong>Server Status:</strong> <span id="server-status">Checking...</span></p>
+        </div>
+        <button id="check-server">Check Server</button>
+        <div id="server-output" class="debug-output">Server information will appear here...</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Test Register API</h2>
+        <div>
+            <input type="text" id="test-name" placeholder="Name" value="Test User">
+            <input type="email" id="test-email" placeholder="Email" value="test@example.com">
+            <input type="password" id="test-password" placeholder="Password" value="password123">
+        </div>
+        <button id="test-register">Test Register API</button>
+        <div id="register-output" class="debug-output">Register API results will appear here...</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Test Login API</h2>
+        <div>
+            <input type="email" id="login-email" placeholder="Email" value="test@example.com">
+            <input type="password" id="login-password" placeholder="Password" value="password123">
+        </div>
+        <button id="test-login">Test Login API</button>
+        <div id="login-output" class="debug-output">Login API results will appear here...</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Environment Information</h2>
+        <button id="get-environment">Get Environment Info</button>
+        <div id="environment-output" class="debug-output">Environment information will appear here...</div>
+    </div>
+
+    <a href="index-landing.html" style="display:block; margin-top: 20px; color: #4CAF50;">Back to Home</a>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Display page URL
+            document.getElementById('page-url').textContent = window.location.href;
+            
+            // Calculate API base URL based on current origin
+            const API_BASE_URL = window.location.origin;
+            document.getElementById('api-base-url').textContent = API_BASE_URL;
+            
+            // Check server button
+            document.getElementById('check-server').addEventListener('click', async () => {
+                const output = document.getElementById('server-output');
+                const statusEl = document.getElementById('server-status');
+                
+                output.textContent = "Checking server status...";
+                
+                try {
+                    // Make a simple request to server's root endpoint
+                    const startTime = Date.now();
+                    const response = await fetch(API_BASE_URL);
+                    const endTime = Date.now();
+                    
+                    const responseTime = endTime - startTime;
+                    
+                    if (response.ok) {
+                        statusEl.textContent = "Online";
+                        statusEl.style.color = "#4CAF50";
+                        
+                        // Get response details
+                        const text = await response.text();
+                        const contentType = response.headers.get('content-type');
+                        
+                        output.textContent = `Server is online! 🟢
+Response Time: ${responseTime}ms
+Status: ${response.status} ${response.statusText}
+Content-Type: ${contentType}
+Response Length: ${text.length} bytes
+
+Response starts with: 
+${text.substring(0, 300)}...`;
+                    } else {
+                        statusEl.textContent = "Error";
+                        statusEl.style.color = "orange";
+                        
+                        output.textContent = `Server returned an error status! 🟠
+Response Time: ${responseTime}ms
+Status: ${response.status} ${response.statusText}`;
+                    }
+                } catch (error) {
+                    statusEl.textContent = "Offline";
+                    statusEl.style.color = "red";
+                    
+                    output.textContent = `Could not connect to server! 🔴
+Error: ${error.message}
+
+This might be because:
+1. The server is not running
+2. There's a network issue
+3. CORS is blocking the request
+4. The URL is incorrect`;
+                }
+            });
+            
+            // Test Register API button
+            document.getElementById('test-register').addEventListener('click', async () => {
+                const output = document.getElementById('register-output');
+                const name = document.getElementById('test-name').value;
+                const email = document.getElementById('test-email').value;
+                const password = document.getElementById('test-password').value;
+                
+                if (!name || !email || !password) {
+                    output.textContent = "Please fill in all fields!";
+                    return;
+                }
+                
+                output.textContent = "Testing register API...";
+                
+                try {
+                    const url = `${API_BASE_URL}/api/register`;
+                    
+                    // Log the request details
+                    const requestLog = `Making POST request to: ${url}
+With payload:
+${JSON.stringify({ name, email, password }, null, 2)}`;
+                    
+                    output.textContent = requestLog;
+                    
+                    // Make the request
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name, email, password })
+                    });
+                    
+                    // Get raw response text
+                    const responseText = await response.text();
+                    
+                    // Try to parse JSON
+                    let parsedResponse;
+                    try {
+                        parsedResponse = JSON.parse(responseText);
+                    } catch (e) {
+                        // Not JSON, show the HTML response
+                        output.textContent = requestLog + `\n\nResponse (Status: ${response.status} ${response.statusText}):
+Content-Type: ${response.headers.get('content-type')}
+
+Response is not valid JSON. First 500 characters:
+${responseText.substring(0, 500)}`;
+                        return;
+                    }
+                    
+                    // Display the response
+                    output.textContent = requestLog + `\n\nResponse (Status: ${response.status} ${response.statusText}):
+${JSON.stringify(parsedResponse, null, 2)}`;
+                    
+                    if (response.ok && parsedResponse.token) {
+                        output.textContent += `\n\nSuccess! Registration worked correctly. Token received.`;
+                    }
+                    
+                } catch (error) {
+                    output.textContent += `\n\nError making request:
+${error.message}`;
+                }
+            });
+            
+            // Test Login API button
+            document.getElementById('test-login').addEventListener('click', async () => {
+                const output = document.getElementById('login-output');
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                
+                if (!email || !password) {
+                    output.textContent = "Please fill in all fields!";
+                    return;
+                }
+                
+                output.textContent = "Testing login API...";
+                
+                try {
+                    const url = `${API_BASE_URL}/api/login`;
+                    
+                    // Log the request details
+                    const requestLog = `Making POST request to: ${url}
+With payload:
+${JSON.stringify({ email, password }, null, 2)}`;
+                    
+                    output.textContent = requestLog;
+                    
+                    // Make the request
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email, password })
+                    });
+                    
+                    // Get raw response text
+                    const responseText = await response.text();
+                    
+                    // Try to parse JSON
+                    let parsedResponse;
+                    try {
+                        parsedResponse = JSON.parse(responseText);
+                    } catch (e) {
+                        // Not JSON, show the HTML response
+                        output.textContent = requestLog + `\n\nResponse (Status: ${response.status} ${response.statusText}):
+Content-Type: ${response.headers.get('content-type')}
+
+Response is not valid JSON. First 500 characters:
+${responseText.substring(0, 500)}`;
+                        return;
+                    }
+                    
+                    // Display the response
+                    output.textContent = requestLog + `\n\nResponse (Status: ${response.status} ${response.statusText}):
+${JSON.stringify(parsedResponse, null, 2)}`;
+                    
+                    if (response.ok && parsedResponse.token) {
+                        output.textContent += `\n\nSuccess! Login worked correctly. Token received.`;
+                    }
+                    
+                } catch (error) {
+                    output.textContent += `\n\nError making request:
+${error.message}`;
+                }
+            });
+            
+            // Get environment info button
+            document.getElementById('get-environment').addEventListener('click', () => {
+                const output = document.getElementById('environment-output');
+                
+                const info = {
+                    userAgent: navigator.userAgent,
+                    url: window.location.href,
+                    origin: window.location.origin,
+                    protocol: window.location.protocol,
+                    hostname: window.location.hostname,
+                    port: window.location.port || (window.location.protocol === 'https:' ? '443' : '80'),
+                    pathname: window.location.pathname,
+                    search: window.location.search,
+                    hash: window.location.hash,
+                    apis: {
+                        fetch: typeof fetch !== 'undefined',
+                        localStorage: typeof localStorage !== 'undefined',
+                        sessionStorage: typeof sessionStorage !== 'undefined'
+                    }
+                };
+                
+                output.textContent = JSON.stringify(info, null, 2);
+            });
+            
+            // Auto-run server check
+            document.getElementById('check-server').click();
+            document.getElementById('get-environment').click();
+        });
+    </script>
+</body>
+</html> 
