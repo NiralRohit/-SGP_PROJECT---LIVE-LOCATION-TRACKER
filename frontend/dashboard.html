@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Location Tracker - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <h1>Location Tracker</h1>
+            </div>
+            <div class="action-buttons">
+                <a href="index.html" class="btn primary-btn">
+                    <i class="fas fa-map-marker-alt"></i> Track My Location
+                </a>
+                <button id="logout-btn" class="btn secondary-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="main">
+            <!-- Location Card -->
+            <div class="card">
+                <h2><span class="card-icon">📍</span> Current Location</h2>
+                
+                <div class="location-info">
+                    <div class="info-box">
+                        <span>Latitude</span>
+                        <p id="latitude">--</p>
+                    </div>
+                    <div class="info-box">
+                        <span>Longitude</span>
+                        <p id="longitude">--</p>
+                    </div>
+                </div>
+                
+                <div class="status-container">
+                    <div id="status-indicator" class="status-indicator offline"></div>
+                    <span id="status-text">Offline - Not Tracking</span>
+                </div>
+                
+                <div id="error-message" class="error-message hidden"></div>
+                
+                <div class="controls">
+                    <button id="start-tracking-btn" class="btn-primary">Start Tracking</button>
+                    <button id="stop-tracking-btn" class="btn-secondary" disabled>Stop Tracking</button>
+                </div>
+            </div>
+            
+            <!-- Map Card -->
+            <div class="card">
+                <h2><span class="card-icon">🗺️</span> Map View</h2>
+                <div id="map-container" style="position: relative; height: 350px;">
+                    <div id="map" style="width: 100%; height: 100%; border-radius: 4px; z-index: 1;"></div>
+                    <div id="map-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.8); padding: 10px; border-radius: 4px; z-index: 2;">Initializing map...</div>
+                </div>
+            </div>
+            
+            <!-- History Card -->
+            <div class="card history-section">
+                <h2><span class="card-icon">⏱️</span> Location History</h2>
+                <div id="history-list" class="history-list">
+                    <div class="empty-history">No location history available yet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Map initialization function
+        let map = null;
+        let marker = null;
+        let mapInitAttempts = 0;
+        const MAX_INIT_ATTEMPTS = 5;
+
+        function forceMapRefresh() {
+            if (map) {
+                setTimeout(() => {
+                    console.log("Forcing map refresh...");
+                    map.invalidateSize(true);
+                    
+                    // Hide loading indicator after map refreshes
+                    const loadingIndicator = document.getElementById('map-loading');
+                    if (loadingIndicator) {
+                        loadingIndicator.style.display = 'none';
+                    }
+                }, 500);
+            }
+        }
+
+        function initMap() {
+            try {
+                // Only initialize if map doesn't exist yet
+                if (!map) {
+                    console.log("Initializing Leaflet map...");
+                    mapInitAttempts++;
+                    
+                    // Show loading indicator
+                    const mapLoading = document.getElementById('map-loading');
+                    if (mapLoading) {
+                        mapLoading.style.display = 'block';
+                    }
+                    
+                    // Remove map placeholder when map is initialized
+                    const mapPlaceholder = document.querySelector('.map-placeholder');
+                    if (mapPlaceholder) {
+                        mapPlaceholder.style.display = 'none';
+                    }
+                    
+                    // Create map centered on a default location (will be updated with user's location)
+                    map = L.map('map', {
+                        center: [20.5937, 78.9629], // Center of India
+                        zoom: 5,
+                        attributionControl: true,
+                        zoomControl: true,
+                        doubleClickZoom: true,
+                        scrollWheelZoom: true,
+                        dragging: true
+                    });
+                    
+                    // Add OpenStreetMap tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        subdomains: ['a', 'b', 'c']
+                    }).addTo(map);
+                    
+                    // Force map refresh after initialization
+                    forceMapRefresh();
+                    
+                    // If geolocation is available, get current position
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                const { latitude, longitude } = position.coords;
+                                console.log("Initial position obtained:", latitude, longitude);
+                                updateMap(latitude, longitude);
+                            },
+                            (error) => {
+                                console.error("Geolocation error:", error);
+                                // Hide loading indicator on error
+                                const mapLoading = document.getElementById('map-loading');
+                                if (mapLoading) {
+                                    mapLoading.style.display = 'none';
+                                }
+                            },
+                            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                        );
+                    }
+                    
+                    console.log("Map initialized successfully");
+                    return true;
+                }
+                return true;
+            } catch (error) {
+                console.error("Error initializing map:", error);
+                
+                // If we've tried too many times, show fallback map
+                if (mapInitAttempts >= MAX_INIT_ATTEMPTS) {
+                    showFallbackMap();
+                }
+                
+                return false;
+            }
+        }
+
+        // Function to update map with new coordinates
+        function updateMap(latitude, longitude) {
+            try {
+                // If map initialization failed or was not called, try initializing again
+                if (!map && !initMap()) {
+                    throw new Error("Map initialization failed");
+                }
+                
+                // Create a new marker if it doesn't exist, otherwise update existing one
+                if (!marker) {
+                    marker = L.marker([latitude, longitude]).addTo(map);
+                    marker.bindPopup("<div class='location-popup'><h3>Your Location</h3><p>Lat: " + latitude.toFixed(6) + "</p><p>Long: " + longitude.toFixed(6) + "</p></div>").openPopup();
+                } else {
+                    marker.setLatLng([latitude, longitude]);
+                    marker.bindPopup("<div class='location-popup'><h3>Your Location</h3><p>Lat: " + latitude.toFixed(6) + "</p><p>Long: " + longitude.toFixed(6) + "</p></div>");
+                }
+                
+                // Center map on marker
+                map.setView([latitude, longitude], 16);
+                
+                // Force map refresh
+                map.invalidateSize(true);
+                
+                // Hide loading indicator
+                const mapLoading = document.getElementById('map-loading');
+                if (mapLoading) {
+                    mapLoading.style.display = 'none';
+                }
+                
+                console.log("Map updated with coordinates:", latitude, longitude);
+                return true;
+            } catch (error) {
+                console.error("Error updating map:", error);
+                showFallbackMap();
+                return false;
+            }
+        }
+
+        // Fallback function when map fails to load
+        function showFallbackMap() {
+            try {
+                console.log("Showing fallback map...");
+                const mapContainer = document.getElementById('map-container');
+                const mapElement = document.getElementById('map');
+                
+                // Check if map container exists
+                if (!mapContainer) return;
+                
+                // Create fallback display
+                const fallbackMap = document.createElement('div');
+                fallbackMap.className = 'fallback-map';
+                
+                // Get coordinates if available
+                const lat = document.getElementById('latitude').textContent;
+                const lng = document.getElementById('longitude').textContent;
+                const hasCoordinates = lat !== '--' && lng !== '--';
+                
+                // Create fallback content
+                let fallbackContent = '<h3>Map Could Not Be Loaded</h3>';
+                fallbackContent += '<p>There was a problem loading the map, but your location is still being tracked.</p>';
+                
+                if (hasCoordinates) {
+                    fallbackContent += `<div class="coordinate-display">Latitude: ${lat}, Longitude: ${lng}</div>`;
+                } else {
+                    fallbackContent += '<p>Start tracking to see your coordinates.</p>';
+                }
+                
+                fallbackMap.innerHTML = fallbackContent;
+                
+                // Replace map with fallback
+                if (mapElement) {
+                    mapElement.style.display = 'none';
+                }
+                
+                // Remove existing fallback if any
+                const existingFallback = mapContainer.querySelector('.fallback-map');
+                if (existingFallback) {
+                    mapContainer.removeChild(existingFallback);
+                }
+                
+                // Add fallback to container
+                mapContainer.appendChild(fallbackMap);
+                
+                return true;
+            } catch (error) {
+                console.error("Error showing fallback map:", error);
+                return false;
+            }
+        }
+
+        // Auth check on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Initialize map after a short delay to ensure the container is rendered
+            setTimeout(initMap, 500);
+            
+            // Add a resize event listener to handle window resize
+            window.addEventListener('resize', function() {
+                if (map) {
+                    console.log("Window resized, refreshing map");
+                    map.invalidateSize(true);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
