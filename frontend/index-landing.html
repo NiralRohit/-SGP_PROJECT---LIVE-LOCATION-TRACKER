@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Location Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="landing">
+        <!-- Hero Section -->
+        <div class="landing-hero">
+            <div class="container">
+                <h1>Live Location Tracking</h1>
+                <p>Track your location in real-time with our easy-to-use application. Perfect for personal use, team coordination, or sharing your location with friends and family.</p>
+                
+                <div class="cta-buttons">
+                    <a href="login.html" class="btn-cta btn-primary-cta">Login</a>
+                    <a href="register.html" class="btn-cta btn-secondary-cta">Register</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Features Section -->
+        <div class="landing-features">
+            <div class="container">
+                <h2 class="features-title">Key Features</h2>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📍</div>
+                        <h3>Real-time Tracking</h3>
+                        <p>Track your location in real-time with accurate GPS positioning.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🗺️</div>
+                        <h3>Interactive Map</h3>
+                        <p>View your location on an interactive map powered by OpenStreetMap.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📱</div>
+                        <h3>Mobile Friendly</h3>
+                        <p>Access from any device with a responsive design that works everywhere.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Secure Access</h3>
+                        <p>Your location data is protected with secure authentication.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">⏱️</div>
+                        <h3>Location History</h3>
+                        <p>View your past locations with timestamp information.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🚫</div>
+                        <h3>Offline Support</h3>
+                        <p>Fallback display ensures you can see your coordinates even when maps are unavailable.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is already logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                // Redirect to dashboard if already logged in
+                window.location.href = 'dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html> 
